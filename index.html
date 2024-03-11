@@ -4,7 +4,9 @@
 
 <head>
     <title>Graph</title>
+    <script src="dagre.min.js"></script>
     <script src="cytoscape.min.js"></script>
+    <script src="cytoscape-dagre.js"></script>
     <script src="datasets.js"></script>
 </head>
 
@@ -45,7 +47,7 @@
         });
 
         cy.layout({
-            name: 'circle'
+            name: 'dagre'
         }).run();
     </script>
 </body>
