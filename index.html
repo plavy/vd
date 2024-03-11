@@ -1,0 +1,53 @@
+<!doctype html>
+
+<html>
+
+<head>
+    <title>Graph</title>
+    <script src="cytoscape.min.js"></script>
+    <script src="datasets.js"></script>
+</head>
+
+<style>
+    #cy {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0px;
+        left: 0px;
+    }
+</style>
+
+<body>
+    <div id="cy"></div>
+    <script>
+        var cy = cytoscape({
+            container: document.getElementById('cy'),
+            elements: dataset1, // from datasets.js
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        shape: 'ellipse',
+                        label: 'data(id)',
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'line-color': '#ccc',
+                        'target-arrow-color': '#ccc',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier'
+                    }
+                }],
+            wheelSensitivity: 0.1
+        });
+
+        cy.layout({
+            name: 'circle'
+        }).run();
+    </script>
+</body>
+
+</html>
