@@ -12,20 +12,39 @@
 
 <style>
     #cy {
-        width: 100%;
-        height: 100%;
+        width: 80%;
+        height: 80%;
         position: absolute;
-        top: 0px;
-        left: 0px;
+        top: 10%;
+        left: 10%;
+        background-color: whitesmoke;
     }
 </style>
 
 <body>
     <div id="cy"></div>
+    <div>
+        <button id="color-A" type="button">Change color of A nodes</button>
+        <button id="select-A" type="button">Select A nodes</button>
+        <button id="reset-zoom" type="button">Reset zoom</button>
+        
+        <label for="dataset-select">Dataset</label>
+        <select name="cars" id="dataset-select">
+            <option value="ds1">Dataset 1</option>
+            <option value="ds2">Dataset 2</option>
+            <option value="ds3">Dataset 3</option>
+            <option value="ds4">Dataset 4</option>
+            <option value="ds5">Dataset 5</option>
+        </select>
+    </div>
+
+
+
+
     <script>
         var cy = cytoscape({
             container: document.getElementById('cy'),
-            elements: dataset1, // from datasets.js
+            elements: dataset2, // from datasets.js
             style: [
                 {
                     selector: 'node',
@@ -45,6 +64,26 @@
                 }],
             wheelSensitivity: 0.1
         });
+
+        function changeColor(event) {
+            var nodes = cy.nodes(".groupA");
+            nodes.forEach(function (node) {
+                node.style("background-color", "blue");
+            });
+        }
+
+        function resetZoom(event) {
+            cy.fit();
+        }
+
+        function setSelectedA(event) {
+            var nodes = cy.nodes(".groupA");
+            nodes.select()
+        }
+
+        document.getElementById("color-A").addEventListener('click', changeColor);
+        document.getElementById("select-A").addEventListener('click', setSelectedA);
+        document.getElementById("reset-zoom").addEventListener('click', resetZoom);
 
         cy.layout({
             name: 'dagre'
