@@ -43,6 +43,7 @@
 
 <body>
     <div id="right-panel">
+        <label for="histogram">Number of neighbours per class</label>
         <canvas id="histogram" style="width:100%;max-width:600px"></canvas>
     </div>
 
@@ -93,7 +94,7 @@
                 {
                     selector: ':selected',
                     css: {
-                        'background-color': 'white',
+                        'background-color': 'darkred',
                         'line-color': 'black',
                         'target-arrow-color': 'black'
                     }
@@ -112,7 +113,18 @@
             options: {
                 legend: { display: false },
                 scales: {
-                    yAxes: [{ ticks: { min: 0 } }],
+                    xAxes: [{
+                        gridLines: {
+                            color: "rgba(0, 0, 0, 0)"
+                        }
+                    }],
+                    yAxes: [{
+                        ticks: { min: 0 },
+                        gridLines: {
+                            color: "rgba(0, 0, 0, 0)"
+                        }
+                    }],
+
                 }
             }
         });
