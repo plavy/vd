@@ -59,6 +59,7 @@
     <div id="cy"></div>
 
     <script>
+        const K = 3
 
         // Initialize dataset list
         selectDataset = document.getElementById('select-dataset');
@@ -88,6 +89,14 @@
                         'target-arrow-shape': 'triangle',
                         'curve-style': 'bezier'
                     }
+                },
+                {
+                    selector: ':selected',
+                    css: {
+                        'background-color': 'white',
+                        'line-color': 'black',
+                        'target-arrow-color': 'black'
+                    }
                 }],
             wheelSensitivity: 0.1
         });
@@ -107,10 +116,18 @@
                 }
             }
         });
+        document.getElementById("histogram").onclick = function (evt) {
+            var points = hist.getElementsAtEventForMode(evt, 'nearest', {
+                intersect: true
+            }, true);
+            if (points.length) {
+                setSelected(points[0]._index);
+            }
+        };
 
 
         function changeColor(event) {
-            var nodes = cy.nodes(".groupA");
+            let nodes = cy.nodes(".group0");
             nodes.forEach(function (node) {
                 node.style("background-color", "blue");
             });
@@ -120,9 +137,9 @@
             cy.fit();
         }
 
-        function setSelectedA(event) {
-            var nodes = cy.nodes(".groupA");
-            nodes.select()
+        function setSelected(index) {
+            cy.nodes().unselect();
+            cy.nodes(".group" + index).select();
         }
 
         function updateDataset(event) {
@@ -130,7 +147,7 @@
         }
 
         document.getElementById("color-A").addEventListener('click', changeColor);
-        document.getElementById("select-A").addEventListener('click', setSelectedA);
+        document.getElementById("select-A").addEventListener('click', (event) => setSelected("0"));
         document.getElementById("reset-zoom").addEventListener('click', resetZoom);
         document.getElementById("select-dataset").addEventListener('change', (event) => {
             cy.json({ elements: datasets[event.target.value] });
@@ -142,15 +159,14 @@
                 name: 'dagre'
             }).run();
 
-            var countA = 0
-            var countB = 0
-            var countC = 0
-            cy.nodes(".groupA").forEach((node) => countA += node.neighborhood().nodes().length);
-            cy.nodes(".groupB").forEach((node) => countB += node.neighborhood().nodes().length);
-            cy.nodes(".groupC").forEach((node) => countC += node.neighborhood().nodes().length);
+            let count = new Array(K)
+            for (var i = 0; i < K; i++) {
+                count[i] = 0
+                cy.nodes(".group" + i).forEach((node) => count[i] += node.neighborhood().nodes().length);
+            }
             hist.data.labels = ["A", "B", "C"];
             hist.data.datasets = [{
-                data: [countA, countB, countC]
+                data: count
             }]
             hist.update();
         }

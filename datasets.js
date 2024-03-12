@@ -1,27 +1,3 @@
-// const dataset1 = {
-//     "nodes": [
-//         {
-//             "data": {
-//                 "id": "a"
-//             }
-//         },
-//         {
-//             "data": {
-//                 "id": "b"
-//             }
-//         }
-//     ],
-//     "edges": [
-//         {
-//             "data": {
-//                 "id": "a->b",
-//                 "source": "a",
-//                 "target": "b"
-//             }
-//         }
-//     ]
-// }
-
 // dataset 1
 N = 100
 
@@ -30,9 +6,9 @@ nodes_B = []
 nodes_C = []
 
 for(let i = 0; i < N; i++) {
-    nodes_A.push({"data": {"id":"A"+i}, "classes": ['groupA']})
-    nodes_B.push({"data": {"id":"B"+i}, "classes": ['groupB']})
-    nodes_C.push({"data": {"id":"C"+i}, "classes": ['groupC']})
+    nodes_A.push({"data": {"id":"A"+i}, "classes": ['group0']})
+    nodes_B.push({"data": {"id":"B"+i}, "classes": ['group1']})
+    nodes_C.push({"data": {"id":"C"+i}, "classes": ['group2']})
 }
 
 edges = []
@@ -60,10 +36,10 @@ nodes_B = []
 nodes_C = []
 
 for(let i = 0; i < N; i++) {
-    nodes_A.push({"data": {"id":"A"+i}, "classes": ['groupA']})
-    nodes_B.push({"data": {"id":"B"+i}, "classes": ['groupB']})
+    nodes_A.push({"data": {"id":"A"+i}, "classes": ['group0']})
+    nodes_B.push({"data": {"id":"B"+i}, "classes": ['group1']})
     if (i <= 0.8 * N) {
-        nodes_C.push({"data": {"id":"C"+i}, "classes": ['groupC']})
+        nodes_C.push({"data": {"id":"C"+i}, "classes": ['group2']})
     }
 }
 
