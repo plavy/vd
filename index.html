@@ -7,44 +7,71 @@
     <script src="dagre.min.js"></script>
     <script src="cytoscape.min.js"></script>
     <script src="cytoscape-dagre.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+
     <script src="datasets.js"></script>
+
 </head>
 
 <style>
     #cy {
-        width: 80%;
-        height: 80%;
+        width: 100%;
+        height: 100%;
         position: absolute;
-        top: 10%;
-        left: 10%;
+        top: 0%;
+        left: 0%;
         background-color: whitesmoke;
+    }
+
+    #control-bar {
+        position: fixed;
+        bottom: 0;
+        margin-bottom: 10px;
+        z-index: 9;
+    }
+
+    #right-panel {
+        position: absolute;
+        top: 0%;
+        left: 80%;
+        width: 20%;
+        height: 100%;
+        z-index: 10;
     }
 </style>
 
 <body>
-    <div id="cy"></div>
-    <div>
+    <div id="right-panel">
+        <canvas id="histogram" style="width:100%;max-width:600px"></canvas>
+    </div>
+
+    <div id="control-bar">
         <button id="color-A" type="button">Change color of A nodes</button>
         <button id="select-A" type="button">Select A nodes</button>
-        <button id="reset-zoom" type="button">Reset zoom</button>
-        
+        <button id="reset-zoom" type="button">Zoom to fit</button>
+
         <label for="dataset-select">Dataset</label>
-        <select name="cars" id="dataset-select">
-            <option value="ds1">Dataset 1</option>
-            <option value="ds2">Dataset 2</option>
-            <option value="ds3">Dataset 3</option>
-            <option value="ds4">Dataset 4</option>
-            <option value="ds5">Dataset 5</option>
+        <select name="datasets" id="select-dataset">
         </select>
     </div>
 
-
-
+    <div id="cy"></div>
 
     <script>
+
+        // Initialize dataset list
+        selectDataset = document.getElementById('select-dataset');
+        for (var i = 0; i < datasets.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = i;
+            opt.innerHTML = datasets[i].name;
+            selectDataset.appendChild(opt);
+        }
+
         var cy = cytoscape({
             container: document.getElementById('cy'),
-            elements: dataset2, // from datasets.js
+            elements: datasets[0], // from datasets.js
             style: [
                 {
                     selector: 'node',
@@ -65,6 +92,23 @@
             wheelSensitivity: 0.1
         });
 
+        var hist = new Chart("histogram", {
+            type: "bar",
+            data: {
+                labels: [],
+                datasets: [{
+                    data: []
+                }]
+            },
+            options: {
+                legend: { display: false },
+                scales: {
+                    yAxes: [{ ticks: { min: 0 } }],
+                }
+            }
+        });
+
+
         function changeColor(event) {
             var nodes = cy.nodes(".groupA");
             nodes.forEach(function (node) {
@@ -81,13 +125,42 @@
             nodes.select()
         }
 
+        function updateDataset(event) {
+            cy.json({ elements: newEleJsons });
+        }
+
         document.getElementById("color-A").addEventListener('click', changeColor);
         document.getElementById("select-A").addEventListener('click', setSelectedA);
         document.getElementById("reset-zoom").addEventListener('click', resetZoom);
+        document.getElementById("select-dataset").addEventListener('change', (event) => {
+            cy.json({ elements: datasets[event.target.value] });
+            refreshGraphs();
+        })
 
-        cy.layout({
-            name: 'dagre'
-        }).run();
+        function refreshGraphs() {
+            cy.layout({
+                name: 'dagre'
+            }).run();
+
+            var countA = 0
+            var countB = 0
+            var countC = 0
+            cy.nodes(".groupA").forEach((node) => countA += node.neighborhood().nodes().length);
+            cy.nodes(".groupB").forEach((node) => countB += node.neighborhood().nodes().length);
+            cy.nodes(".groupC").forEach((node) => countC += node.neighborhood().nodes().length);
+            hist.data.labels = ["A", "B", "C"];
+            hist.data.datasets = [{
+                data: [countA, countB, countC]
+            }]
+            hist.update();
+        }
+
+
+
+
+
+
+        refreshGraphs()
     </script>
 </body>
 
