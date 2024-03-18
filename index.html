@@ -21,7 +21,7 @@
             <label for="bar-chart">Number of neighbours per class</label>
             <canvas id="bar-chart"></canvas>
 
-            <label for="bar-chart">Distribution of neighbours in class A</label>
+            <label for="histogram" id="histogram-label"></label>
             <canvas id="histogram"></canvas>
         </div>
     </div>
@@ -58,6 +58,7 @@
             selectDataset.appendChild(opt);
         }
 
+        // Network graph
         var cy = cytoscape({
             container: document.getElementById('cy'),
             elements: datasets[0], // from datasets.js
@@ -66,7 +67,7 @@
                     selector: 'node',
                     style: {
                         shape: 'ellipse',
-                        label: 'data(id)',
+                        label: 'data(id)'
                     }
                 },
                 {
@@ -90,6 +91,7 @@
             wheelSensitivity: 0.1
         });
 
+        // Bar chart
         var bar = new Chart("bar-chart", {
             type: "bar",
             data: {
@@ -134,10 +136,13 @@
                 intersect: true
             }, true);
             if (points.length) {
-                setSelected(points[0]._index);
+                let index = points[0]._index;
+                setSelected(index);
+                refreshHistogram(index)
             }
         };
 
+        // Histogram
         const hist = new Chart("histogram", {
             type: 'bar',
             data: {
@@ -147,12 +152,14 @@
                 }]
             },
             options: {
+                legend: { display: false },
                 scales: {
                     xAxes: [{
                         display: false,
                         barPercentage: 1.3,
                         ticks: {
                             max: 3,
+                            fontColor: "#000000"
                         }
                     }, {
                         display: true,
@@ -163,13 +170,17 @@
                     }],
                     yAxes: [{
                         ticks: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            fontColor: "#000000"
                         }
                     }]
                 }
             }
         });
 
+        function indexToLetter(index) {
+            return String.fromCharCode(65 + (index % 26));
+        }
 
         function changeColor(event) {
             let nodes = cy.nodes(".group0");
@@ -178,7 +189,7 @@
             });
         }
 
-        function resetZoom(event) {
+        function zoomToFit(event) {
             cy.fit();
         }
 
@@ -189,38 +200,31 @@
 
         function updateDataset(event) {
             cy.json({ elements: newEleJsons });
-        }
+        }        
 
-        document.getElementById("nodesA-color").addEventListener('change', (event) => updateColor(0, event.target.value));
-        document.getElementById("nodesB-color").addEventListener('change', (event) => updateColor(1, event.target.value));
-        document.getElementById("nodesC-color").addEventListener('change', (event) => updateColor(2, event.target.value));
-        document.getElementById("reset-zoom").addEventListener('click', resetZoom);
-        document.getElementById("select-dataset").addEventListener('change', (event) => {
-            cy.json({ elements: datasets[event.target.value] });
-            refreshGraphs();
-        })
-
-        function refreshGraphs() {
+        function refreshNetworkGraph() {
             cy.layout({
                 name: 'dagre'
             }).run();
+        }
 
-            // Bar chart
-            bar.data.datasets = []
+        function refreshBarChart() {
+            bar.data.labels = []
             let count = new Array(K)
             for (var i = 0; i < K; i++) {
                 count[i] = 0
                 cy.nodes(".group" + i).forEach((node) => count[i] += node.neighborhood().nodes().length);
+                bar.data.labels.push(indexToLetter(i));
             }
-            bar.data.labels = ["A", "B", "C"];
             bar.data.datasets = [{
                 data: count,
                 backgroundColor: ["#ff0000", "#008800", "#0000ff"]
             }]
             bar.update();
+        }
 
-            // Histogram
-            className = ".group" + 0;
+        function refreshHistogram(index) {
+            className = ".group" + index;
             count = [0, 0, 0, 0, 0, 0]
             cy.nodes(className).forEach((node) => count[node.neighborhood().nodes().length] += 1);
             hist.data.labels = [0, 1, 2, 3, 4, 5]
@@ -228,6 +232,13 @@
                 data: count
             }]
             hist.update()
+            document.getElementById("histogram-label").innerHTML = "Distribution of neighbours in class " + indexToLetter(index)
+        }
+
+        function refreshGraphs() {
+            refreshNetworkGraph();
+            refreshBarChart();
+            refreshHistogram(0);
 
             // Colors
             updateColor(0, document.getElementById("nodesA-color").value)
@@ -241,9 +252,18 @@
             cy.nodes(".group" + index).forEach((node) => node.style("background-color", color));
         }
 
+        // Event listeners
+        document.getElementById("nodesA-color").addEventListener('change', (event) => updateColor(0, event.target.value));
+        document.getElementById("nodesB-color").addEventListener('change', (event) => updateColor(1, event.target.value));
+        document.getElementById("nodesC-color").addEventListener('change', (event) => updateColor(2, event.target.value));
+        document.getElementById("reset-zoom").addEventListener('click', zoomToFit);
+        document.getElementById("select-dataset").addEventListener('change', (event) => {
+            cy.json({ elements: datasets[event.target.value] });
+            refreshGraphs();
+        })
 
+        // Initialze graphs
         refreshGraphs()
-        updateColor()
     </script>
 </body>
 
