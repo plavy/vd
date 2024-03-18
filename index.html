@@ -18,7 +18,7 @@
 <body>
     <div id="right-panel">
         <div id="right-panel-content">
-            <label for="bar-chart">Number of neighbours per class</label>
+            <label for="bar-chart">Number of neighbors per class</label>
             <canvas id="bar-chart"></canvas>
 
             <label for="histogram" id="histogram-label"></label>
@@ -27,7 +27,7 @@
     </div>
 
     <div id="control-bar">
-        <label for="dataset-select">Dataset</label>
+        <label for="dataset-select">Dataset:</label>
         <select name="datasets" id="select-dataset">
         </select>
 
@@ -39,9 +39,21 @@
         <input type="color" id="nodesC-color" value="#0000ff" />
 
         <button id="reset-zoom" type="button">Zoom to fit</button>
+    </div>
 
-
-
+    <div id="selection-panel">
+        <div id="one-selected">
+            1 selected node
+            <div id="one-selected-id"></div>
+            <div id="one-selected-class"></div>
+            <div id="one-selected-neighbors"></div>
+        </div>
+        <div id="many-selected">
+            <div id="many-selected-number"></div>
+            <div id="many-selected-A"></div>
+            <div id="many-selected-B"></div>
+            <div id="many-selected-C"></div>
+        </div>
     </div>
 
     <div id="cy"></div>
@@ -138,7 +150,8 @@
             if (points.length) {
                 let index = points[0]._index;
                 setSelected(index);
-                refreshHistogram(index)
+                refreshHistogram(index);
+                refreshSelectionPanel();
             }
         };
 
@@ -200,7 +213,7 @@
 
         function updateDataset(event) {
             cy.json({ elements: newEleJsons });
-        }        
+        }
 
         function refreshNetworkGraph() {
             cy.layout({
@@ -235,10 +248,35 @@
             document.getElementById("histogram-label").innerHTML = "Distribution of neighbours in class " + indexToLetter(index)
         }
 
+        function refreshSelectionPanel() {
+            let nodes = cy.elements('node:selected')
+            if (nodes.length == 1) {
+                document.getElementById("one-selected").style.display = "block";
+                document.getElementById("many-selected").style.display = "none";
+
+                document.getElementById("one-selected-neighbors").innerHTML = "Neighbors: " + nodes[0].neighborhood().nodes().length;
+                node = nodes.jsons()[0]
+                document.getElementById("one-selected-id").innerHTML = "ID: " + node.data.id;
+                document.getElementById("one-selected-class").innerHTML = "Class: " + indexToLetter(node.classes.substring(5));
+            } else if (nodes.length > 1) {
+                document.getElementById("one-selected").style.display = "none";
+                document.getElementById("many-selected").style.display = "block";
+
+                document.getElementById("many-selected-number").innerHTML = nodes.length + " selected nodes";
+                document.getElementById("many-selected-A").innerHTML = "Nodes A: " + nodes.filter(".group0").length;
+                document.getElementById("many-selected-B").innerHTML = "Nodes B: " + nodes.filter(".group1").length;
+                document.getElementById("many-selected-C").innerHTML = "Nodes C: " + nodes.filter(".group2").length;
+            } else {
+                document.getElementById("one-selected").style.display = "none";
+                document.getElementById("many-selected").style.display = "none";
+            }
+        }
+
         function refreshGraphs() {
             refreshNetworkGraph();
             refreshBarChart();
             refreshHistogram(0);
+            refreshSelectionPanel();
 
             // Colors
             updateColor(0, document.getElementById("nodesA-color").value)
@@ -261,6 +299,7 @@
             cy.json({ elements: datasets[event.target.value] });
             refreshGraphs();
         })
+        document.getElementById("cy").addEventListener('click', (event) => refreshSelectionPanel())
 
         // Initialze graphs
         refreshGraphs()

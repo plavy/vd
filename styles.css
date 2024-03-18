@@ -8,7 +8,7 @@
 }
 
 #control-bar {
-    position: fixed;
+    position: absolute;
     bottom: 0;
     margin-bottom: 10px;
     z-index: 9;
@@ -30,5 +30,16 @@
 }
 
 #right-panel-content {
+    padding: 10px;
+}
+
+#selection-panel {
+    position: absolute;
+    bottom: 0;
+    right: 20%;
+    z-index: 9;
+}
+
+#one-selected, #many-selected {
     padding: 10px;
 }
