@@ -4,42 +4,16 @@
 
 <head>
     <title>Graph</title>
+    <link rel="stylesheet" type="text/css" rel="noopener" target="_blank" href="styles.css">
+
     <script src="dagre.min.js"></script>
     <script src="cytoscape.min.js"></script>
     <script src="cytoscape-dagre.js"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
-
     <script src="datasets.js"></script>
 
 </head>
 
-<style>
-    #cy {
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        top: 0%;
-        left: 0%;
-        background-color: whitesmoke;
-    }
-
-    #control-bar {
-        position: fixed;
-        bottom: 0;
-        margin-bottom: 10px;
-        z-index: 9;
-    }
-
-    #right-panel {
-        position: absolute;
-        top: 0%;
-        left: 80%;
-        width: 20%;
-        height: 100%;
-        z-index: 10;
-    }
-</style>
 
 <body>
     <div id="right-panel">
@@ -48,13 +22,20 @@
     </div>
 
     <div id="control-bar">
-        <button id="color-A" type="button">Change color of A nodes</button>
-        <button id="select-A" type="button">Select A nodes</button>
-        <button id="reset-zoom" type="button">Zoom to fit</button>
-
         <label for="dataset-select">Dataset</label>
         <select name="datasets" id="select-dataset">
         </select>
+
+        <label for="nodesA-color">Nodes A:</label>
+        <input type="color" id="nodesA-color" value="#ff0000"/>
+        <label for="nodesB-color">Nodes B:</label>
+        <input type="color" id="nodesB-color" value="#008800"/>
+        <label for="nodesC-color">Nodes C:</label>
+        <input type="color" id="nodesC-color" value="#0000ff"/>
+
+
+        <button id="reset-zoom" type="button">Zoom to fit</button>
+
     </div>
 
     <div id="cy"></div>
@@ -94,9 +75,10 @@
                 {
                     selector: ':selected',
                     css: {
-                        'background-color': 'darkred',
                         'line-color': 'black',
-                        'target-arrow-color': 'black'
+                        'target-arrow-color': 'black',
+                        'border-width': 4,
+                        'border-color': 'black'
                     }
                 }],
             wheelSensitivity: 0.1
@@ -112,6 +94,13 @@
             },
             options: {
                 legend: { display: false },
+                onHover: (event, element) => {
+                    if (element.length == 1) {
+                        event.target.style.cursor = 'pointer';
+                    } else {
+                        event.target.style.cursor = 'default';
+                    }
+                },
                 scales: {
                     xAxes: [{
                         gridLines: {
@@ -141,7 +130,7 @@
         function changeColor(event) {
             let nodes = cy.nodes(".group0");
             nodes.forEach(function (node) {
-                node.style("background-color", "blue");
+                node.style("background-color", event.target.value);
             });
         }
 
@@ -158,8 +147,9 @@
             cy.json({ elements: newEleJsons });
         }
 
-        document.getElementById("color-A").addEventListener('click', changeColor);
-        document.getElementById("select-A").addEventListener('click', (event) => setSelected("0"));
+        document.getElementById("nodesA-color").addEventListener('change', (event) => updateColor(0, event.target.value));
+        document.getElementById("nodesB-color").addEventListener('change', (event) => updateColor(1, event.target.value));
+        document.getElementById("nodesC-color").addEventListener('change', (event) => updateColor(2, event.target.value));
         document.getElementById("reset-zoom").addEventListener('click', resetZoom);
         document.getElementById("select-dataset").addEventListener('change', (event) => {
             cy.json({ elements: datasets[event.target.value] });
@@ -171,6 +161,7 @@
                 name: 'dagre'
             }).run();
 
+            hist.data.datasets = []
             let count = new Array(K)
             for (var i = 0; i < K; i++) {
                 count[i] = 0
@@ -178,17 +169,24 @@
             }
             hist.data.labels = ["A", "B", "C"];
             hist.data.datasets = [{
-                data: count
+                data: count,
+                backgroundColor: ["#ff0000", "#008800", "#0000ff"]
             }]
             hist.update();
+            updateColor(0, document.getElementById("nodesA-color").value)
+            updateColor(1, document.getElementById("nodesB-color").value)
+            updateColor(2, document.getElementById("nodesC-color").value)
+        }
+
+        function updateColor(index, color) {
+            hist.data.datasets[0].backgroundColor[index] = color
+            hist.update()
+            cy.nodes(".group" + index).forEach((node) => node.style("background-color", color));
         }
 
 
-
-
-
-
         refreshGraphs()
+        updateColor()
     </script>
 </body>
 
