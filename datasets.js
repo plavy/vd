@@ -21,6 +21,12 @@ for(let i = 0; i < N; i++) {
 edges.push({"data": {"id": "2:0", "source": "B4", "target": "A7"}})
 edges.push({"data": {"id": "2:1", "source": "B3", "target": "A7"}})
 
+edges.push({"data": {"id": "2:2", "source": "B6", "target": "A9"}})
+edges.push({"data": {"id": "2:3", "source": "B8", "target": "A9"}})
+
+edges.push({"data": {"id": "2:4", "source": "B9", "target": "A11"}})
+edges.push({"data": {"id": "2:5", "source": "B10", "target": "A11"}})
+
 
 const dataset1 = {
     "name": "Dataset 1",
