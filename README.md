@@ -4,7 +4,7 @@
 
 The project is written in plain HTML and JavaScript.
 
-Open `index.html` in your web browser.
+To run the project, simply open `index.html` in your web browser.
 
 ## Visualizations
 
