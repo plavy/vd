@@ -9,6 +9,9 @@
     <script src="dagre.min.js"></script>
     <script src="cytoscape.min.js"></script>
     <script src="cytoscape-dagre.js"></script>
+    <script src="https://unpkg.com/layout-base/layout-base.js"></script>
+    <script src="https://unpkg.com/cose-base/cose-base.js"></script>
+    <script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
     <script src="datasets.js"></script>
 
@@ -30,6 +33,7 @@
         <label for="dataset-select">Dataset:</label>
         <select name="datasets" id="select-dataset">
         </select>
+        <input type='file' accept='.csv' onchange='openDataset(event)'><br>
 
         <label for="nodesA-color">Nodes A:</label>
         <input type="color" id="nodesA-color" value="#ff0000" />
@@ -60,6 +64,7 @@
 
     <script>
         const K = 3
+        var fixed_nodes = []
 
         // Initialize dataset list
         selectDataset = document.getElementById('select-dataset');
@@ -79,7 +84,7 @@
                     selector: 'node',
                     style: {
                         shape: 'ellipse',
-                        label: 'data(id)'
+                        // label: 'data(id)'
                     }
                 },
                 {
@@ -195,6 +200,10 @@
             return String.fromCharCode(65 + (index % 26));
         }
 
+        function letterToIndex(char) {
+            return char.charCodeAt(0) - 65;
+        }
+
         function changeColor(event) {
             let nodes = cy.nodes(".group0");
             nodes.forEach(function (node) {
@@ -203,7 +212,7 @@
         }
 
         function zoomToFit(event) {
-            cy.fit();
+            cy.fit(padding = 10);
         }
 
         function setSelected(index) {
@@ -211,13 +220,12 @@
             cy.nodes(".group" + index).select();
         }
 
-        function updateDataset(event) {
-            cy.json({ elements: newEleJsons });
-        }
-
         function refreshNetworkGraph() {
             cy.layout({
-                name: 'dagre'
+                name: 'fcose',
+                animationDuration: 2000,
+                nodeSeparation: 75,
+                fixedNodeConstraint: fixed_nodes,
             }).run();
         }
 
@@ -298,11 +306,68 @@
         document.getElementById("select-dataset").addEventListener('change', (event) => {
             cy.json({ elements: datasets[event.target.value] });
             refreshGraphs();
-        })
-        document.getElementById("cy").addEventListener('click', (event) => refreshSelectionPanel())
+        });
+        document.getElementById("cy").addEventListener('click', (event) => refreshSelectionPanel());
+
+        // Load dataset
+        function openDataset(event) {
+            var reader = new FileReader();
+            reader.onload = function () {
+                let text = reader.result;
+                let node_ids = new Set()
+                let counter = 0
+                let edges = []
+                for (line of text.split('\n')) {
+                    if (line.length > 1) {
+                        node1 = line.split(',')[0]
+                        node2 = line.split(',')[1]
+                        node3 = line.split(',')[2]
+                        node_ids.add(node1)
+                        node_ids.add(node2)
+                        node_ids.add(node3)
+                        edges.push({"data": {"id": "A" + counter, "source": node1, "target": node2}})
+                        edges.push({"data": {"id": "B" + counter, "source": node2, "target": node3}})
+                        counter++;
+                    }
+                    if (counter >= 1000) {
+                        break;
+                    }
+                }
+                
+                let nodes = [];
+                fixed_nodes = [];
+                const index_start = 0;
+                const index_end = 2;
+                let counter_start = 0;
+                let counter_end = 0;
+                for (id of node_ids) {
+                    index = letterToIndex(id.charAt(0))
+                    if (index == index_start) {
+                        fixed_nodes.push({ "nodeId": id, "position": { x: 0, y: 40 + counter_start * 40} });
+                        counter_start++;
+                    } else if (index == index_end){
+                        fixed_nodes.push({ "nodeId": id, "position": { x: 10000, y: 40 + counter_end * 40} });
+                        counter_end++;
+                    }
+                    nodes.push({ "data": { "id": id }, "classes": ['group' + index] })
+                };
+
+
+                console.log(nodes)
+                cy.json({ elements: {
+                    "name": "Dataset",
+                    "nodes": nodes,
+                    "edges": edges
+                }});
+                refreshGraphs();
+            };
+            reader.readAsText(event.target.files[0]);
+        }
 
         // Initialze graphs
-        refreshGraphs()
+        refreshGraphs();
+
+
     </script>
 </body>
 
