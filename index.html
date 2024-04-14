@@ -314,9 +314,9 @@
             var reader = new FileReader();
             reader.onload = function () {
                 let text = reader.result;
-                let node_ids = new Set()
-                let counter = 0
-                let edges = []
+                let node_ids = new Set();
+                let counter = 0;
+                let edges = [];
                 for (line of text.split('\n')) {
                     if (line.length > 1) {
                         node1 = line.split(',')[0]
@@ -334,26 +334,45 @@
                     }
                 }
                 
-                let nodes = [];
+                var nodes = [];
                 fixed_nodes = [];
                 const index_start = 0;
                 const index_end = 2;
-                let counter_start = 0;
-                let counter_end = 0;
+                let total_start = 0;
+                let total_end = 0;
                 for (id of node_ids) {
                     index = letterToIndex(id.charAt(0))
                     if (index == index_start) {
-                        fixed_nodes.push({ "nodeId": id, "position": { x: 0, y: 40 + counter_start * 40} });
+                        total_start++;
+                    } else if (index == index_end){
+                        total_end++;
+                    }
+                }
+
+                let counter_start = 0;
+                let counter_end = 0;
+                let radius = 5000;
+                let separation = 5000;
+                for (id of node_ids) {
+                    index = letterToIndex(id.charAt(0))
+                    if (index == index_start) {
+                        t = (counter_start / total_start) * Math.PI + (Math.PI / 2);
+                        fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + 0, y: radius * Math.sin(t) + 0} });
                         counter_start++;
                     } else if (index == index_end){
-                        fixed_nodes.push({ "nodeId": id, "position": { x: 10000, y: 40 + counter_end * 40} });
+                        t = - (counter_end / total_end) * Math.PI + (Math.PI / 2);
+                        fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + separation, y: radius * Math.sin(t) + 0} });
                         counter_end++;
                     }
-                    nodes.push({ "data": { "id": id }, "classes": ['group' + index] })
+                    nodes.push({ "data": { "id": id }, "classes": ['group' + index] });
+                    if (id.length <= 3) {
+                        console.log(id)
+                    }
                 };
 
+                console.log(nodes.filter(x => x.data.id.length <= 3));
 
-                console.log(nodes)
+                cy.elements().remove();
                 cy.json({ elements: {
                     "name": "Dataset",
                     "nodes": nodes,
