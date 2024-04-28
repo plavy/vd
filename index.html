@@ -19,6 +19,13 @@
 
 
 <body>
+    <div id="loading-screen">
+        <div id="loading-container">
+            <div id="loader"></div>
+            <div id="loading-text">Calculating node positions</div>
+        </div>
+    </div>
+
     <div id="right-panel">
         <div id="right-panel-content">
             <label for="bar-chart">Number of neighbors per class</label>
@@ -97,15 +104,27 @@
                     }
                 },
                 {
-                    selector: ':selected',
+                    selector: 'edge:selected',
                     css: {
                         'line-color': 'black',
                         'target-arrow-color': 'black',
-                        'border-width': 4,
-                        'border-color': 'black'
+                        'width': 8,
+                    }
+                },
+                {
+                    selector: 'node:selected',
+                    css: {
+                        'border-color': 'black',
+                        'border-width': 8,
                     }
                 }],
             wheelSensitivity: 0.1
+        });
+        // Select edges of selected node
+        cy.on('select', 'node', function (event) {
+            const node = event.target;
+            const edges = node.connectedEdges();
+            edges.select();
         });
 
         // Bar chart
@@ -216,6 +235,7 @@
         }
 
         function setSelected(index) {
+            cy.edges().unselect();
             cy.nodes().unselect();
             cy.nodes(".group" + index).select();
         }
@@ -287,9 +307,9 @@
             refreshSelectionPanel();
 
             // Colors
-            updateColor(0, document.getElementById("nodesA-color").value)
-            updateColor(1, document.getElementById("nodesB-color").value)
-            updateColor(2, document.getElementById("nodesC-color").value)
+            updateColor(0, document.getElementById("nodesA-color").value);
+            updateColor(1, document.getElementById("nodesB-color").value);
+            updateColor(2, document.getElementById("nodesC-color").value);
         }
 
         function updateColor(index, color) {
@@ -310,9 +330,11 @@
         document.getElementById("cy").addEventListener('click', (event) => refreshSelectionPanel());
 
         // Load dataset
-        function openDataset(event) {
+        async function openDataset(event) {
+
             var reader = new FileReader();
             reader.onload = function () {
+                document.getElementById("loading-screen").style.display = "block";
                 let text = reader.result;
                 let node_ids = new Set();
                 let counter = 0;
@@ -325,15 +347,19 @@
                         node_ids.add(node1)
                         node_ids.add(node2)
                         node_ids.add(node3)
-                        edges.push({"data": {"id": "A" + counter, "source": node1, "target": node2}})
-                        edges.push({"data": {"id": "B" + counter, "source": node2, "target": node3}})
+                        edges.push({ "data": { "id": counter, "source": node1, "target": node2 } })
+                        counter++;
+                        edges.push({ "data": { "id": counter, "source": node2, "target": node3 } })
                         counter++;
                     }
-                    if (counter >= 1000) {
+                    if (counter >= 3000) {
+                        alert("Too many lines in the dataset. Only first 3000 lines will be loaded.")
                         break;
                     }
                 }
-                
+
+
+
                 var nodes = [];
                 fixed_nodes = [];
                 const index_start = 0;
@@ -344,49 +370,52 @@
                     index = letterToIndex(id.charAt(0))
                     if (index == index_start) {
                         total_start++;
-                    } else if (index == index_end){
+                    } else if (index == index_end) {
                         total_end++;
                     }
                 }
 
+                // Set fixed nodes
                 let counter_start = 0;
                 let counter_end = 0;
-                let radius = 7500;
-                let separation = 7500;
+                let radius = Math.max(total_start, total_end) * 10;
+                let separation = radius;
                 for (id of node_ids) {
                     index = letterToIndex(id.charAt(0))
                     if (index == index_start) {
                         t = (counter_start / total_start) * Math.PI + (Math.PI / 2);
-                        fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + 0, y: radius * Math.sin(t) + 0} });
+                        fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + 0, y: radius * Math.sin(t) + 0 } });
                         counter_start++;
-                    } else if (index == index_end){
+                    } else if (index == index_end) {
                         t = - (counter_end / total_end) * Math.PI + (Math.PI / 2);
-                        fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + separation, y: radius * Math.sin(t) + 0} });
+                        fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + separation, y: radius * Math.sin(t) + 0 } });
                         counter_end++;
                     }
                     nodes.push({ "data": { "id": id }, "classes": ['group' + index] });
-                    if (id.length <= 3) {
-                        console.log(id)
-                    }
                 };
 
-                console.log(nodes.filter(x => x.data.id.length <= 3));
+                console.log("Total number of nodes: " + nodes.length)
+                console.log("Total number of edges: " + edges.length)
 
-                cy.elements().remove();
-                cy.json({ elements: {
-                    "name": "Dataset",
-                    "nodes": nodes,
-                    "edges": edges
-                }});
-                refreshGraphs();
+                setTimeout(function () {
+                    cy.elements().remove();
+                    cy.json({
+                        elements: {
+                            "name": "Dataset",
+                            "nodes": nodes,
+                            "edges": edges
+                        }
+                    });
+                    refreshGraphs();
+                    setTimeout(() => document.getElementById("loading-screen").style.display = "none", 2000);
+                }, 100);
             };
             reader.readAsText(event.target.files[0]);
+
         }
 
         // Initialze graphs
         refreshGraphs();
-
-
     </script>
 </body>
 
