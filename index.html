@@ -13,7 +13,8 @@
     <script src="https://unpkg.com/cose-base/cose-base.js"></script>
     <script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
-    <script src="datasets.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="default-dataset.js"></script>
 
 </head>
 
@@ -22,7 +23,7 @@
     <div id="loading-screen">
         <div id="loading-container">
             <div id="loader"></div>
-            <div id="loading-text">Calculating node positions</div>
+            <div id="loading-text">Calculating node positions...</div>
         </div>
     </div>
 
@@ -33,13 +34,14 @@
 
             <label for="histogram" id="histogram-label"></label>
             <canvas id="histogram"></canvas>
+
+            <label for="heatmap">Heatmap of connections between classes</label>
+            <div id="heatmap"></div>
         </div>
     </div>
 
     <div id="control-bar">
         <label for="dataset-select">Dataset:</label>
-        <select name="datasets" id="select-dataset">
-        </select>
         <input type='file' accept='.csv' onchange='openDataset(event)'><br>
 
         <label for="nodesA-color">Nodes A:</label>
@@ -70,22 +72,13 @@
     <div id="cy"></div>
 
     <script>
-        const K = 3
+        const K = 3 // number of node classes
         var fixed_nodes = []
-
-        // Initialize dataset list
-        selectDataset = document.getElementById('select-dataset');
-        for (var i = 0; i < datasets.length; i++) {
-            var opt = document.createElement('option');
-            opt.value = i;
-            opt.innerHTML = datasets[i].name;
-            selectDataset.appendChild(opt);
-        }
 
         // Network graph
         var cy = cytoscape({
             container: document.getElementById('cy'),
-            elements: datasets[0], // from datasets.js
+            elements: defaultDataset, // from default-dataset.js
             style: [
                 {
                     selector: 'node',
@@ -193,16 +186,16 @@
                 scales: {
                     xAxes: [{
                         display: false,
-                        barPercentage: 1.3,
+                        barPercentage: 1.25,
                         ticks: {
-                            max: 3,
+                            max: 4,
                             fontColor: "#000000"
                         }
                     }, {
                         display: true,
                         ticks: {
                             autoSkip: false,
-                            max: 4,
+                            max: 5,
                         }
                     }],
                     yAxes: [{
@@ -214,6 +207,36 @@
                 }
             }
         });
+
+        // Heatmap
+        let categories = [];
+        for (let i = 0; i < K; i++) {
+            categories.push(indexToLetter(i));
+        }
+        let options = {
+            series: [],
+            chart: {
+                height: 350,
+                type: 'heatmap',
+                toolbar: {
+                    show: false
+                },
+            },
+            xaxis: {
+                type: 'category',
+                categories: categories
+            },
+            dataLabels: {
+                enabled: false
+            },
+            colors: ["#008FFB"],
+            title: {
+                text: undefined
+            },
+        };
+
+        var heatmap = new ApexCharts(document.querySelector("#heatmap"), options);
+        heatmap.render();
 
         function indexToLetter(index) {
             return String.fromCharCode(65 + (index % 26));
@@ -241,6 +264,9 @@
         }
 
         function refreshNetworkGraph() {
+
+            // TODO: Render fixed nodes here
+
             cy.layout({
                 name: 'fcose',
                 animationDuration: 2000,
@@ -250,9 +276,9 @@
         }
 
         function refreshBarChart() {
-            bar.data.labels = []
-            let count = new Array(K)
-            for (var i = 0; i < K; i++) {
+            bar.data.labels = [];
+            let count = new Array(K);
+            for (let i = 0; i < K; i++) {
                 count[i] = 0
                 cy.nodes(".group" + i).forEach((node) => count[i] += node.neighborhood().nodes().length);
                 bar.data.labels.push(indexToLetter(i));
@@ -272,8 +298,26 @@
             hist.data.datasets = [{
                 data: count
             }]
-            hist.update()
-            document.getElementById("histogram-label").innerHTML = "Distribution of neighbours in class " + indexToLetter(index)
+            hist.update();
+            document.getElementById("histogram-label").innerHTML = "Distribution of neighbours in class " + indexToLetter(index);
+        }
+
+        function refreshHeatmap() {
+            let count = new Array(K);
+            for (let i = 0; i < K; i++) {
+                count[i] = [];
+                for (let j = 0; j < K; j++) {
+                    count[i].push(cy.nodes(".group" + i).outgoers().targets().map(node => node.classes()).filter(classes => classes[0] == "group" + j).length);
+                }
+            }
+            let series = [];
+            for (let i = 0; i < K; i++) {
+                series.unshift({
+                    name: indexToLetter(i),
+                    data: count[i]
+                });
+            }
+            heatmap.updateSeries(series);
         }
 
         function refreshSelectionPanel() {
@@ -304,6 +348,7 @@
             refreshNetworkGraph();
             refreshBarChart();
             refreshHistogram(0);
+            refreshHeatmap();
             refreshSelectionPanel();
 
             // Colors
@@ -323,10 +368,6 @@
         document.getElementById("nodesB-color").addEventListener('change', (event) => updateColor(1, event.target.value));
         document.getElementById("nodesC-color").addEventListener('change', (event) => updateColor(2, event.target.value));
         document.getElementById("reset-zoom").addEventListener('click', zoomToFit);
-        document.getElementById("select-dataset").addEventListener('change', (event) => {
-            cy.json({ elements: datasets[event.target.value] });
-            refreshGraphs();
-        });
         document.getElementById("cy").addEventListener('click', (event) => refreshSelectionPanel());
 
         // Load dataset
@@ -341,15 +382,15 @@
                 let edges = [];
                 for (line of text.split('\n')) {
                     if (line.length > 1) {
-                        node1 = line.split(',')[0]
-                        node2 = line.split(',')[1]
-                        node3 = line.split(',')[2]
-                        node_ids.add(node1)
-                        node_ids.add(node2)
-                        node_ids.add(node3)
-                        edges.push({ "data": { "id": counter, "source": node1, "target": node2 } })
+                        node1 = line.split(',')[0];
+                        node2 = line.split(',')[1];
+                        node3 = line.split(',')[2];
+                        node_ids.add(node1);
+                        node_ids.add(node2);
+                        node_ids.add(node3);
+                        edges.push({ "data": { "id": counter, "source": node1, "target": node2 } });
                         counter++;
-                        edges.push({ "data": { "id": counter, "source": node2, "target": node3 } })
+                        edges.push({ "data": { "id": counter, "source": node2, "target": node3 } });
                         counter++;
                     }
                     if (counter >= 3000) {
@@ -357,8 +398,6 @@
                         break;
                     }
                 }
-
-
 
                 var nodes = [];
                 fixed_nodes = [];
@@ -375,24 +414,35 @@
                     }
                 }
 
+                let radius = Math.max(total_start, total_end) * 10;
+                let separation = radius;
+
+                // Add 2 metanodes
+                nodes.push({ "data": { "id": "META1" }, "classes": ['meta'] });
+                nodes.push({ "data": { "id": "META2" }, "classes": ['meta'] });
+                fixed_nodes.push({ "nodeId": "META1", "position": { x: 0 - radius, y: 0 } });
+                fixed_nodes.push({ "nodeId": "META2", "position": { x: 0 + separation + radius, y: 0 } });
+
                 // Set fixed nodes
                 let counter_start = 0;
                 let counter_end = 0;
-                let radius = Math.max(total_start, total_end) * 10;
-                let separation = radius;
                 for (id of node_ids) {
                     index = letterToIndex(id.charAt(0))
                     if (index == index_start) {
                         t = (counter_start / total_start) * Math.PI + (Math.PI / 2);
                         fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + 0, y: radius * Math.sin(t) + 0 } });
+                        edges.push({ "data": { "id": "ms" + counter_start, "source": "META1", "target": id } });
                         counter_start++;
                     } else if (index == index_end) {
                         t = - (counter_end / total_end) * Math.PI + (Math.PI / 2);
                         fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + separation, y: radius * Math.sin(t) + 0 } });
+                        edges.push({ "data": { "id": "me" + counter_end, "source": id, "target": "META2" } });
                         counter_end++;
                     }
                     nodes.push({ "data": { "id": id }, "classes": ['group' + index] });
                 };
+                
+                
 
                 console.log("Total number of nodes: " + nodes.length)
                 console.log("Total number of edges: " + edges.length)
@@ -411,7 +461,6 @@
                 }, 100);
             };
             reader.readAsText(event.target.files[0]);
-
         }
 
         // Initialze graphs
