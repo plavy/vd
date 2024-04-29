@@ -41,8 +41,18 @@
     </div>
 
     <div id="control-bar">
+        <label for="layout-conf">Layout:</label>
+        <select id="layout-conf">
+            <option value="0">Arcs</option>
+            <option value="1">Metanodes</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+        </select>
+
         <label for="dataset-select">Dataset:</label>
-        <input type='file' accept='.csv' onchange='openDataset(event)'><br>
+        <input type='file' accept='.csv' onchange='openDataset(event)'>
+
+        <br>
 
         <label for="nodesA-color">Nodes A:</label>
         <input type="color" id="nodesA-color" value="#ff0000" />
@@ -73,7 +83,7 @@
 
     <script>
         const K = 3 // number of node classes
-        var fixed_nodes = []
+        var datasetLines = []
 
         // Network graph
         var cy = cytoscape({
@@ -264,9 +274,98 @@
         }
 
         function refreshNetworkGraph() {
+            let node_ids = new Set();
+            let counter = 0;
+            let edges = [];
 
-            // TODO: Render fixed nodes here
+            for (line of datasetLines) {
+                if (line.length > 1) {
+                    node1 = line.split(',')[0];
+                    node2 = line.split(',')[1];
+                    node3 = line.split(',')[2];
+                    node_ids.add(node1);
+                    node_ids.add(node2);
+                    node_ids.add(node3);
+                    edges.push({ "data": { "id": counter, "source": node1, "target": node2 } });
+                    counter++;
+                    edges.push({ "data": { "id": counter, "source": node2, "target": node3 } });
+                    counter++;
+                }
+                if (counter >= 3000) {
+                    alert("Too many lines in the dataset. Only first 3000 lines will be processed.")
+                    break;
+                }
+            };
 
+
+            let nodes = [];
+            let fixed_nodes = [];
+
+            // Count nodes of first and last class
+            const index_start = 0;
+            const index_end = 2;
+            let total_start = 0;
+            let total_end = 0;
+            for (id of node_ids) {
+                index = letterToIndex(id.charAt(0))
+                if (index == index_start) {
+                    total_start++;
+                } else if (index == index_end) {
+                    total_end++;
+                }
+            }
+
+            let layoutConf = document.getElementById("layout-conf").value;
+            let radius = Math.max(total_start, total_end) * 10;
+            let separation = radius;
+
+            // Add 2 metanodes
+            if (layoutConf == 1) {
+                nodes.push({ "data": { "id": "META1" }, "classes": ['meta'] });
+                nodes.push({ "data": { "id": "META2" }, "classes": ['meta'] });
+                fixed_nodes.push({ "nodeId": "META1", "position": { x: 0 - radius, y: 0 } });
+                fixed_nodes.push({ "nodeId": "META2", "position": { x: 0 + separation + radius, y: 0 } });
+            }
+
+            console.log(layoutConf);
+            // Set fixed nodes
+            let counter_start = 0;
+            let counter_end = 0;
+            for (id of node_ids) {
+                index = letterToIndex(id.charAt(0))
+                if (index == index_start) {
+                    if (layoutConf == 0) {
+                        t = (counter_start / total_start) * Math.PI + (Math.PI / 2);
+                        fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + 0, y: radius * Math.sin(t) + 0 } });
+                    }
+                    if (layoutConf == 1) {
+                        edges.push({ "data": { "id": "ms" + counter_start, "source": "META1", "target": id } });
+                    }
+                    counter_start++;
+                } else if (index == index_end) {
+                    if (layoutConf == 0) {
+                        t = - (counter_end / total_end) * Math.PI + (Math.PI / 2);
+                        fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + separation, y: radius * Math.sin(t) + 0 } });
+                    }
+                    if (layoutConf == 1) {
+                        edges.push({ "data": { "id": "me" + counter_end, "source": id, "target": "META2" } });
+                    }
+                    counter_end++;
+                }
+                nodes.push({ "data": { "id": id }, "classes": ['group' + index] });
+            };
+
+            console.log("Total number of nodes: " + nodes.length)
+            console.log("Total number of edges: " + edges.length)
+
+            cy.elements().remove();
+            cy.json({
+                elements: {
+                    "name": "Dataset",
+                    "nodes": nodes,
+                    "edges": edges
+                }
+            });
             cy.layout({
                 name: 'fcose',
                 animationDuration: 2000,
@@ -345,16 +444,20 @@
         }
 
         function refreshGraphs() {
-            refreshNetworkGraph();
-            refreshBarChart();
-            refreshHistogram(0);
-            refreshHeatmap();
-            refreshSelectionPanel();
+            document.getElementById("loading-screen").style.display = "block";
+            setTimeout(function () {
+                refreshNetworkGraph();
+                refreshBarChart();
+                refreshHistogram(0);
+                refreshHeatmap();
+                refreshSelectionPanel();
 
-            // Colors
-            updateColor(0, document.getElementById("nodesA-color").value);
-            updateColor(1, document.getElementById("nodesB-color").value);
-            updateColor(2, document.getElementById("nodesC-color").value);
+                // Colors
+                updateColor(0, document.getElementById("nodesA-color").value);
+                updateColor(1, document.getElementById("nodesB-color").value);
+                updateColor(2, document.getElementById("nodesC-color").value);
+                setTimeout(() => document.getElementById("loading-screen").style.display = "none", 2000);
+            }, 100);
         }
 
         function updateColor(index, color) {
@@ -368,97 +471,19 @@
         document.getElementById("nodesB-color").addEventListener('change', (event) => updateColor(1, event.target.value));
         document.getElementById("nodesC-color").addEventListener('change', (event) => updateColor(2, event.target.value));
         document.getElementById("reset-zoom").addEventListener('click', zoomToFit);
+        document.getElementById("layout-conf").addEventListener('click', (event) => refreshGraphs());
         document.getElementById("cy").addEventListener('click', (event) => refreshSelectionPanel());
 
         // Load dataset
         async function openDataset(event) {
-
             var reader = new FileReader();
             reader.onload = function () {
-                document.getElementById("loading-screen").style.display = "block";
                 let text = reader.result;
-                let node_ids = new Set();
-                let counter = 0;
-                let edges = [];
+                datasetLines = [];
                 for (line of text.split('\n')) {
-                    if (line.length > 1) {
-                        node1 = line.split(',')[0];
-                        node2 = line.split(',')[1];
-                        node3 = line.split(',')[2];
-                        node_ids.add(node1);
-                        node_ids.add(node2);
-                        node_ids.add(node3);
-                        edges.push({ "data": { "id": counter, "source": node1, "target": node2 } });
-                        counter++;
-                        edges.push({ "data": { "id": counter, "source": node2, "target": node3 } });
-                        counter++;
-                    }
-                    if (counter >= 3000) {
-                        alert("Too many lines in the dataset. Only first 3000 lines will be loaded.")
-                        break;
-                    }
+                    datasetLines.push(line)
                 }
-
-                var nodes = [];
-                fixed_nodes = [];
-                const index_start = 0;
-                const index_end = 2;
-                let total_start = 0;
-                let total_end = 0;
-                for (id of node_ids) {
-                    index = letterToIndex(id.charAt(0))
-                    if (index == index_start) {
-                        total_start++;
-                    } else if (index == index_end) {
-                        total_end++;
-                    }
-                }
-
-                let radius = Math.max(total_start, total_end) * 10;
-                let separation = radius;
-
-                // Add 2 metanodes
-                nodes.push({ "data": { "id": "META1" }, "classes": ['meta'] });
-                nodes.push({ "data": { "id": "META2" }, "classes": ['meta'] });
-                fixed_nodes.push({ "nodeId": "META1", "position": { x: 0 - radius, y: 0 } });
-                fixed_nodes.push({ "nodeId": "META2", "position": { x: 0 + separation + radius, y: 0 } });
-
-                // Set fixed nodes
-                let counter_start = 0;
-                let counter_end = 0;
-                for (id of node_ids) {
-                    index = letterToIndex(id.charAt(0))
-                    if (index == index_start) {
-                        t = (counter_start / total_start) * Math.PI + (Math.PI / 2);
-                        fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + 0, y: radius * Math.sin(t) + 0 } });
-                        edges.push({ "data": { "id": "ms" + counter_start, "source": "META1", "target": id } });
-                        counter_start++;
-                    } else if (index == index_end) {
-                        t = - (counter_end / total_end) * Math.PI + (Math.PI / 2);
-                        fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + separation, y: radius * Math.sin(t) + 0 } });
-                        edges.push({ "data": { "id": "me" + counter_end, "source": id, "target": "META2" } });
-                        counter_end++;
-                    }
-                    nodes.push({ "data": { "id": id }, "classes": ['group' + index] });
-                };
-                
-                
-
-                console.log("Total number of nodes: " + nodes.length)
-                console.log("Total number of edges: " + edges.length)
-
-                setTimeout(function () {
-                    cy.elements().remove();
-                    cy.json({
-                        elements: {
-                            "name": "Dataset",
-                            "nodes": nodes,
-                            "edges": edges
-                        }
-                    });
-                    refreshGraphs();
-                    setTimeout(() => document.getElementById("loading-screen").style.display = "none", 2000);
-                }, 100);
+                refreshGraphs();
             };
             reader.readAsText(event.target.files[0]);
         }
