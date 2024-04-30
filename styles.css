@@ -25,6 +25,7 @@ body {
     top: 0%;
     left: 80%;
     width: 20%;
+    min-width: 100px;
     height: 100%;
     overflow: auto;
     z-index: 10;

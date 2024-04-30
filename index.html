@@ -43,10 +43,10 @@
     <div id="control-bar">
         <label for="layout-conf">Layout:</label>
         <select id="layout-conf">
-            <option value="0">Fixed Arcs</option>
-            <option value="1">Metanodes, Vertical</option>
-            <option value="2">Metanodes, Free</option>
-            <option value="3">Free</option>
+            <option value=0>Fixed Arcs</option>
+            <option value=1>Metanodes, Vertical</option>
+            <option value=2>Metanodes, Free</option>
+            <option value=3>Free</option>
         </select>
 
         <label for="dataset-select">Dataset:</label>
@@ -330,8 +330,7 @@
                 fixed_nodes.push({ "nodeId": "META2", "position": { x: 0 + separation + radius, y: 0 } });
             }
 
-            console.log(layoutConf);
-            // Set fixed nodes
+            // Set layout constraints
             let counter_start = 0;
             let counter_end = 0;
             for (id of node_ids) {
@@ -377,13 +376,17 @@
                     "edges": edges
                 }
             });
+
+            let alignmentConstraint = {};
+            if (vertical_nodes_start.length > 0 || vertical_nodes_end.length > 0) {
+                alignmentConstraint = { vertical: [vertical_nodes_start, vertical_nodes_end] };
+            }
             cy.layout({
                 name: 'fcose',
                 animationDuration: 2000,
-                // nodeSeparation: 75,
-                nodeSeparation: 300,
+                nodeSeparation: 75,
                 fixedNodeConstraint: fixed_nodes,
-                alignmentConstraint: { vertical: [vertical_nodes_start, vertical_nodes_end] },
+                alignmentConstraint: alignmentConstraint,
             }).run();
         }
 
