@@ -13,7 +13,6 @@ N_ABA = 200
 N_ABB = 100
 
 connections = []
-
 # connections = [
 #     ("A0", "B0", "C0"),
 #     ("A4", "B3", "C1")

@@ -43,15 +43,16 @@
     <div id="control-bar">
         <label for="layout-conf">Layout:</label>
         <select id="layout-conf">
-            <option value="0">Arcs</option>
-            <option value="1">Metanodes</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
+            <option value="0">Fixed Arcs</option>
+            <option value="1">Metanodes, Vertical</option>
+            <option value="2">Metanodes, Free</option>
+            <option value="3">Free</option>
         </select>
 
         <label for="dataset-select">Dataset:</label>
         <input type='file' accept='.csv' onchange='openDataset(event)'>
 
+        <br>
         <br>
 
         <label for="nodesA-color">Nodes A:</label>
@@ -300,6 +301,8 @@
 
             let nodes = [];
             let fixed_nodes = [];
+            let vertical_nodes_start = [];
+            let vertical_nodes_end = [];
 
             // Count nodes of first and last class
             const index_start = 0;
@@ -320,7 +323,7 @@
             let separation = radius;
 
             // Add 2 metanodes
-            if (layoutConf == 1) {
+            if (layoutConf == 1 || layoutConf == 2) {
                 nodes.push({ "data": { "id": "META1" }, "classes": ['meta'] });
                 nodes.push({ "data": { "id": "META2" }, "classes": ['meta'] });
                 fixed_nodes.push({ "nodeId": "META1", "position": { x: 0 - radius, y: 0 } });
@@ -338,7 +341,11 @@
                         t = (counter_start / total_start) * Math.PI + (Math.PI / 2);
                         fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + 0, y: radius * Math.sin(t) + 0 } });
                     }
-                    if (layoutConf == 1) {
+                    else if (layoutConf == 1) {
+                        edges.push({ "data": { "id": "ms" + counter_start, "source": "META1", "target": id } });
+                        vertical_nodes_start.push(id);
+                    }
+                    else if (layoutConf == 2) {
                         edges.push({ "data": { "id": "ms" + counter_start, "source": "META1", "target": id } });
                     }
                     counter_start++;
@@ -347,7 +354,11 @@
                         t = - (counter_end / total_end) * Math.PI + (Math.PI / 2);
                         fixed_nodes.push({ "nodeId": id, "position": { x: radius * Math.cos(t) + separation, y: radius * Math.sin(t) + 0 } });
                     }
-                    if (layoutConf == 1) {
+                    else if (layoutConf == 1) {
+                        edges.push({ "data": { "id": "me" + counter_end, "source": id, "target": "META2" } });
+                        vertical_nodes_end.push(id);
+                    }
+                    else if (layoutConf == 2) {
                         edges.push({ "data": { "id": "me" + counter_end, "source": id, "target": "META2" } });
                     }
                     counter_end++;
@@ -369,8 +380,10 @@
             cy.layout({
                 name: 'fcose',
                 animationDuration: 2000,
-                nodeSeparation: 75,
+                // nodeSeparation: 75,
+                nodeSeparation: 300,
                 fixedNodeConstraint: fixed_nodes,
+                alignmentConstraint: { vertical: [vertical_nodes_start, vertical_nodes_end] },
             }).run();
         }
 
