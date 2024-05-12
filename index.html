@@ -130,6 +130,10 @@
             const edges = node.connectedEdges();
             edges.select();
         });
+        // Update selection panel
+        cy.on('select', function(event) {
+            refreshSelectionPanel();
+        })
 
         // Bar chart
         var bar = new Chart("bar-chart", {
@@ -177,7 +181,7 @@
             }, true);
             if (points.length) {
                 let index = points[0]._index;
-                setSelected(index);
+                setSelectedNodes(index);
                 refreshHistogram(index);
                 refreshSelectionPanel();
             }
@@ -218,6 +222,15 @@
                 }
             }
         });
+        document.getElementById("histogram").onclick = function (evt) {
+            var points = bar.getElementsAtEventForMode(evt, 'nearest', {
+                intersect: true
+            }, true);
+            if (points.length) {
+                let number = points[0]._index;
+                setSelectedNodes(1, number + 1)
+            }
+        };
 
         // Heatmap
         let categories = [];
@@ -232,10 +245,18 @@
                 toolbar: {
                     show: false
                 },
+                events: {
+                    dataPointSelection: (event, chartContext, config) => {
+                        setSelectedEgdes(config.seriesIndex, config.dataPointIndex);
+                    }
+                }
             },
             xaxis: {
                 type: 'category',
                 categories: categories
+            },
+            yaxis: {
+                reversed: true
             },
             dataLabels: {
                 enabled: false
@@ -266,12 +287,36 @@
 
         function zoomToFit(event) {
             cy.fit(padding = 10);
+            setSelectedNodes(1, 2);
         }
 
-        function setSelected(index) {
+        function unselectAll() {
             cy.edges().unselect();
             cy.nodes().unselect();
+        }
+
+        function setSelectedNodes(index) {
+            unselectAll();
             cy.nodes(".group" + index).select();
+        }
+
+        function setSelectedNodes(index, number) {
+            unselectAll();
+            cy.nodes(".group" + index).filter(function(n) {
+                return n.neighborhood().nodes().length == number;
+            }).select();
+        }
+
+        function setSelectedEgdes(index1, index2) {
+            unselectAll();
+            cy.edges().filter(function (e) {
+                const sourceNode = e.source();
+                const targetNode = e.target();
+
+                const isSourceA = sourceNode.hasClass('group' + index1);
+                const isTargetB = targetNode.hasClass('group' + index2);
+                return isSourceA && isTargetB;
+            }).select();
         }
 
         function refreshNetworkGraph() {
@@ -384,7 +429,8 @@
             cy.layout({
                 name: 'fcose',
                 animationDuration: 2000,
-                nodeSeparation: 75,
+                // nodeSeparation: 75,
+                nodeSeparation: 500,
                 fixedNodeConstraint: fixed_nodes,
                 alignmentConstraint: alignmentConstraint,
             }).run();
@@ -427,7 +473,7 @@
             }
             let series = [];
             for (let i = 0; i < K; i++) {
-                series.unshift({
+                series.push({
                     name: indexToLetter(i),
                     data: count[i]
                 });
