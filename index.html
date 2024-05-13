@@ -27,6 +27,52 @@
         </div>
     </div>
 
+    <div id="left-panel">
+        <div id="left-panel-content">
+            <div>
+                <label for="layout-conf">Layout:</label>
+                <select id="layout-conf">
+                    <option value=0>Fixed Arcs</option>
+                    <option value=1>Metanodes, Vertical</option>
+                    <option value=2>Metanodes, Free</option>
+                    <option value=3>Free</option>
+                </select>
+            </div>
+            <div>
+                <label for="node-separation">Node separation</label>
+                <input id="node-separation" type="range" min="0" max="1000" value="500" display="block">
+            </div>
+            <div>
+                <button id="recalculate" type="button">Recalculate</button>
+            </div>
+            <div>
+                <label for="nodesA-color">Nodes A:</label>
+                <input type="color" id="nodesA-color" value="#ff0000" />
+            </div>
+            <div>
+                <label for="nodesB-color">Nodes B:</label>
+                <input type="color" id="nodesB-color" value="#008800" />
+            </div>
+            <div>
+                <label for="nodesC-color">Nodes C:</label>
+                <input type="color" id="nodesC-color" value="#0000ff" />
+            </div>
+            <div>
+                <label for="node-color">Node coloring:</label>
+                <input type="color" id="node-color" value="#aaaaaa" />
+                <button id="apply-node-color" type="button">Apply to selected</button>
+            </div>
+            <div>
+                <label for="edge-color">Edge coloring:</label>
+                <input type="color" id="edge-color" value="#aaaaaa" />
+                <button id="apply-edge-color" type="button">Apply to selected</button>
+            </div>
+            <div>
+                <button id="reset-zoom" type="button">Zoom to fit</button>
+            </div>
+        </div>
+    </div>
+
     <div id="right-panel">
         <div id="right-panel-content">
             <label for="bar-chart">Number of neighbors per class</label>
@@ -41,28 +87,11 @@
     </div>
 
     <div id="control-bar">
-        <label for="layout-conf">Layout:</label>
-        <select id="layout-conf">
-            <option value=0>Fixed Arcs</option>
-            <option value=1>Metanodes, Vertical</option>
-            <option value=2>Metanodes, Free</option>
-            <option value=3>Free</option>
-        </select>
+
 
         <label for="dataset-select">Dataset:</label>
         <input type='file' accept='.csv' onchange='openDataset(event)'>
 
-        <br>
-        <br>
-
-        <label for="nodesA-color">Nodes A:</label>
-        <input type="color" id="nodesA-color" value="#ff0000" />
-        <label for="nodesB-color">Nodes B:</label>
-        <input type="color" id="nodesB-color" value="#008800" />
-        <label for="nodesC-color">Nodes C:</label>
-        <input type="color" id="nodesC-color" value="#0000ff" />
-
-        <button id="reset-zoom" type="button">Zoom to fit</button>
     </div>
 
     <div id="selection-panel">
@@ -131,7 +160,7 @@
             edges.select();
         });
         // Update selection panel
-        cy.on('select', function(event) {
+        cy.on('select', function (event) {
             refreshSelectionPanel();
         })
 
@@ -228,7 +257,7 @@
             }, true);
             if (points.length) {
                 let number = points[0]._index;
-                setSelectedNodes(1, number + 1)
+                setSelectedNodesN(1, number + 1)
             }
         };
 
@@ -287,7 +316,6 @@
 
         function zoomToFit(event) {
             cy.fit(padding = 10);
-            setSelectedNodes(1, 2);
         }
 
         function unselectAll() {
@@ -300,9 +328,9 @@
             cy.nodes(".group" + index).select();
         }
 
-        function setSelectedNodes(index, number) {
+        function setSelectedNodesN(index, number) {
             unselectAll();
-            cy.nodes(".group" + index).filter(function(n) {
+            cy.nodes(".group" + index).filter(function (n) {
                 return n.neighborhood().nodes().length == number;
             }).select();
         }
@@ -317,6 +345,18 @@
                 const isTargetB = targetNode.hasClass('group' + index2);
                 return isSourceA && isTargetB;
             }).select();
+        }
+
+        function colorSelectedNodes(color) {
+            cy.nodes(':selected').style({
+                'background-color': color
+            });
+        }
+
+        function colorSelectedEdges(color) {
+            cy.edges(':selected').style({
+                'line-color': color
+            });
         }
 
         function refreshNetworkGraph() {
@@ -428,9 +468,8 @@
             }
             cy.layout({
                 name: 'fcose',
-                animationDuration: 2000,
-                // nodeSeparation: 75,
-                nodeSeparation: 500,
+                // animationDuration: 5000,
+                nodeSeparation: document.getElementById("node-separation").value,
                 fixedNodeConstraint: fixed_nodes,
                 alignmentConstraint: alignmentConstraint,
             }).run();
@@ -525,7 +564,9 @@
         function updateColor(index, color) {
             bar.data.datasets[0].backgroundColor[index] = color
             bar.update()
-            cy.nodes(".group" + index).forEach((node) => node.style("background-color", color));
+            cy.nodes(".group" + index).forEach((node) => node.style({
+                "background-color": color
+            }));
         }
 
         // Event listeners
@@ -533,7 +574,9 @@
         document.getElementById("nodesB-color").addEventListener('change', (event) => updateColor(1, event.target.value));
         document.getElementById("nodesC-color").addEventListener('change', (event) => updateColor(2, event.target.value));
         document.getElementById("reset-zoom").addEventListener('click', zoomToFit);
-        document.getElementById("layout-conf").addEventListener('click', (event) => refreshGraphs());
+        document.getElementById("apply-node-color").addEventListener('click', (event) => colorSelectedNodes(document.getElementById("node-color").value));
+        document.getElementById("apply-edge-color").addEventListener('click', (event) => colorSelectedEdges(document.getElementById("edge-color").value));
+        document.getElementById("recalculate").addEventListener('click', (event) => refreshGraphs());
         document.getElementById("cy").addEventListener('click', (event) => refreshSelectionPanel());
 
         // Load dataset

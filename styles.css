@@ -17,15 +17,39 @@ body {
     bottom: 0;
     margin-left: 10px;
     margin-bottom: 10px;
-    z-index: 9;
+    z-index: 11;
+}
+
+#left-panel {
+    position: absolute;
+    top: 0%;
+    left: -320px;
+    height: 100%;
+    width: 350px;
+    overflow: auto;
+    z-index: 10;
+    background-color: rgba(255, 255, 255, 0.75);
+    transition: 0.5s;
+}
+
+#left-panel:hover {
+    left: 0%;
+    background-color: rgba(255, 255, 255, 1);
+}
+
+#left-panel-content {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 10px
 }
 
 #right-panel {
     position: absolute;
     top: 0%;
-    left: 80%;
+    right: 0%;
     width: 20%;
-    min-width: 100px;
+    min-width: 300px;
     height: 100%;
     overflow: auto;
     z-index: 10;
@@ -60,7 +84,7 @@ body {
     height: 100%;
     background-color: rgba(0, 0, 0, 0.75);
     margin: 0px;
-    z-index: 11;
+    z-index: 20;
 }
 
 #loading-container {
