@@ -37,7 +37,7 @@ body {
     background-color: rgba(255, 255, 255, 1);
 }
 
-#left-panel-content {
+#left-panel-content, #layout-set {
     display: flex;
     flex-direction: column;
     padding: 10px;
@@ -119,4 +119,8 @@ body {
     margin: 10px;
     color: white;
     font-size: larger;
+}
+
+.slider {
+    width: 200px;
 }

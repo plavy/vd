@@ -30,20 +30,31 @@
     <div id="left-panel">
         <div id="left-panel-content">
             <div>
-                <label for="layout-conf">Layout:</label>
-                <select id="layout-conf">
-                    <option value=0>Fixed Arcs</option>
-                    <option value=1>Metanodes, Vertical</option>
-                    <option value=2>Metanodes, Free</option>
-                    <option value=3>Free</option>
-                </select>
-            </div>
-            <div>
-                <label for="node-separation">Node separation</label>
-                <input id="node-separation" type="range" min="0" max="1000" value="500" display="block">
-            </div>
-            <div>
-                <button id="recalculate" type="button">Recalculate</button>
+                <fieldset id="layout-set">
+                    <label>Algorithm: fCoSE</label>
+                    <div>
+                        <label for="layout-conf">Layout:</label>
+                        <select id="layout-conf">
+                            <option value=0>Fixed Arcs</option>
+                            <option value=1>Metanodes, Vertical</option>
+                            <option value=2>Metanodes, Free</option>
+                            <option value=3>Free</option>
+                        </select>
+                    </div>
+                    <label for="node-separation">Node separation</label>
+                    <div>
+                        <input id="node-separation" class="slider" type="range" min="0" max="10000" value="500"
+                            oninput="this.nextElementSibling.value = this.value">
+                        <output>500</output>
+                    </div>
+                    <label for="radius-factor">Radius factor</label>
+                    <div>
+                        <input id="radius-factor" class="slider" type="range" min="1" max="20" value="10"
+                            oninput="this.nextElementSibling.value = this.value">
+                        <output>10</output>
+                    </div>
+                    <button id="recalculate" type="button">Recalculate</button>
+                </fieldset>
             </div>
             <div>
                 <label for="nodesA-color">Nodes A:</label>
@@ -68,30 +79,44 @@
                 <button id="apply-edge-color" type="button">Apply to selected</button>
             </div>
             <div>
+                <label for="regex-query">Regex selection:</label>
+                <input type="text" id="regex-query" />
+            </div>
+            <div>
+                <input type="checkbox" id="show-labels" />
+                <label for="show-labels">Show labels</label>
+            </div>
+            <div>
                 <button id="reset-zoom" type="button">Zoom to fit</button>
+            </div>
+            <div>
+                Piechart: ingoers - outgoers
+            </div>
+            <div>
+                RDS mode
             </div>
         </div>
     </div>
 
     <div id="right-panel">
         <div id="right-panel-content">
-            <label for="bar-chart">Number of neighbors per class</label>
+            <label for="bar-chart">Number of nodes per class</label>
             <canvas id="bar-chart"></canvas>
 
-            <label for="histogram" id="histogram-label"></label>
+            <label for="histogram" id="histogram-label">Distribution of node neighbours</label>
             <canvas id="histogram"></canvas>
 
             <label for="heatmap">Heatmap of connections between classes</label>
             <div id="heatmap"></div>
+
+            <label for="pie-chart" id="pie-chart-label">Ingoers vs Outogers</label>
+            <canvas id="pie-chart"></canvas>
         </div>
     </div>
 
     <div id="control-bar">
-
-
-        <label for="dataset-select">Dataset:</label>
-        <input type='file' accept='.csv' onchange='openDataset(event)'>
-
+        <label for="select-dataset">Dataset:</label>
+        <input id="select-dataset" type='file' accept='.csv'>
     </div>
 
     <div id="selection-panel">
@@ -103,9 +128,6 @@
         </div>
         <div id="many-selected">
             <div id="many-selected-number"></div>
-            <div id="many-selected-A"></div>
-            <div id="many-selected-B"></div>
-            <div id="many-selected-C"></div>
         </div>
     </div>
 
@@ -118,13 +140,14 @@
         // Network graph
         var cy = cytoscape({
             container: document.getElementById('cy'),
-            elements: defaultDataset, // from default-dataset.js
+            elements: {},
             style: [
                 {
                     selector: 'node',
                     style: {
-                        shape: 'ellipse',
-                        // label: 'data(id)'
+                        'shape': 'ellipse',
+                        'label': 'data(id)',
+                        'text-opacity': 0,
                     }
                 },
                 {
@@ -159,10 +182,19 @@
             const edges = node.connectedEdges();
             edges.select();
         });
-        // Update selection panel
-        cy.on('select', function (event) {
-            refreshSelectionPanel();
-        })
+        // Update panels on select event
+        // Debounce function
+        function debounce(func) {
+            let timerId;
+            return function () {
+                clearTimeout(timerId);
+                timerId = setTimeout(() => {
+                    func.apply(this, arguments);
+                }, 50);
+            };
+        }
+        cy.on('select', debounce(refreshPanels));
+        cy.on('unselect', debounce(refreshPanels));
 
         // Bar chart
         var bar = new Chart("bar-chart", {
@@ -211,8 +243,7 @@
             if (points.length) {
                 let index = points[0]._index;
                 setSelectedNodes(index);
-                refreshHistogram(index);
-                refreshSelectionPanel();
+                refreshPanels();
             }
         };
 
@@ -295,9 +326,26 @@
                 text: undefined
             },
         };
-
         var heatmap = new ApexCharts(document.querySelector("#heatmap"), options);
         heatmap.render();
+
+        // Pie chart
+        const pie = new Chart("pie-chart", {
+            type: 'pie',
+            data: {
+                labels: ['Ingoers', 'Outgoers'],
+                datasets: [{
+                    data: [0, 0]
+                }]
+            },
+            options: {
+                plugins: {
+                    title: {
+                        display: false
+                    }
+                }
+            }
+        });
 
         function indexToLetter(index) {
             return String.fromCharCode(65 + (index % 26));
@@ -359,9 +407,26 @@
             });
         }
 
+        function setLabels(enabled) {
+            cy.nodes().style({
+                'text-opacity': enabled ? 1 : 0
+            });
+        }
+
+        function setSelectedRegex(query) {
+            unselectAll();
+            if (query) {
+                regex = new RegExp(query);
+                cy.nodes().filter(node => {
+                    const id = node.data('id');
+                    return regex.test(id);
+                }).select();
+            }
+        }
+
         function refreshNetworkGraph() {
             let node_ids = new Set();
-            let counter = 0;
+            let counter = 1;
             let edges = [];
 
             for (line of datasetLines) {
@@ -404,7 +469,7 @@
             }
 
             let layoutConf = document.getElementById("layout-conf").value;
-            let radius = Math.max(total_start, total_end) * 10;
+            let radius = Math.max(total_start, total_end) * document.getElementById("radius-factor").value;
             let separation = radius;
 
             // Add 2 metanodes
@@ -477,10 +542,10 @@
 
         function refreshBarChart() {
             bar.data.labels = [];
+            let nodes = cy.nodes(':selected').length == 0 ? cy.nodes() : cy.nodes(':selected');
             let count = new Array(K);
             for (let i = 0; i < K; i++) {
-                count[i] = 0
-                cy.nodes(".group" + i).forEach((node) => count[i] += node.neighborhood().nodes().length);
+                count[i] = nodes.nodes(".group" + i).length
                 bar.data.labels.push(indexToLetter(i));
             }
             bar.data.datasets = [{
@@ -490,26 +555,31 @@
             bar.update();
         }
 
-        function refreshHistogram(index) {
-            className = ".group" + index;
+        function refreshHistogram() {
+            let nodes = cy.nodes(':selected').length == 0 ? cy.nodes() : cy.nodes(':selected');
             count = [0, 0, 0, 0, 0, 0]
-            cy.nodes(className).forEach((node) => count[node.neighborhood().nodes().length] += 1);
+            nodes.forEach((node) => count[node.neighborhood().nodes().length] += 1);
             hist.data.labels = [0, 1, 2, 3, 4, 5]
             hist.data.datasets = [{
                 data: count
             }]
             hist.update();
-            document.getElementById("histogram-label").innerHTML = "Distribution of neighbours in class " + indexToLetter(index);
         }
 
         function refreshHeatmap() {
+            let edges = cy.edges(':selected').length == 0 ? cy.edges() : cy.edges(':selected');
             let count = new Array(K);
             for (let i = 0; i < K; i++) {
-                count[i] = [];
-                for (let j = 0; j < K; j++) {
-                    count[i].push(cy.nodes(".group" + i).outgoers().targets().map(node => node.classes()).filter(classes => classes[0] == "group" + j).length);
+                count[i] = new Array(K).fill(0);
+            }
+            for (let edge of edges) {
+                let sourceIndex = edge.source().classes()[0].match(/\d+/);
+                let targetIndex = edge.target().classes()[0].match(/\d+/);
+                if (sourceIndex && targetIndex) {
+                    count[sourceIndex][targetIndex] += 1;
                 }
             }
+            console.log(count);
             let series = [];
             for (let i = 0; i < K; i++) {
                 series.push({
@@ -518,6 +588,23 @@
                 });
             }
             heatmap.updateSeries(series);
+        }
+
+        function refreshPieChart() {
+            let nodes = cy.nodes(':selected').length == 0 ? cy.nodes() : cy.nodes(':selected');
+            let count_in = 0;
+            let count_out = 0;
+            nodes.forEach((node) => count_in += node.incomers().length);
+            nodes.forEach((node) => count_out += node.outgoers().length);
+            pie.data.labels = ['Ingoers', 'Outgoers'];
+            pie.data.datasets = [{
+                data: [count_in, count_out],
+                backgroundColor: [
+                    'yellow',
+                    'darkblue',
+                ]
+            }]
+            pie.update();
         }
 
         function refreshSelectionPanel() {
@@ -535,30 +622,32 @@
                 document.getElementById("many-selected").style.display = "block";
 
                 document.getElementById("many-selected-number").innerHTML = nodes.length + " selected nodes";
-                document.getElementById("many-selected-A").innerHTML = "Nodes A: " + nodes.filter(".group0").length;
-                document.getElementById("many-selected-B").innerHTML = "Nodes B: " + nodes.filter(".group1").length;
-                document.getElementById("many-selected-C").innerHTML = "Nodes C: " + nodes.filter(".group2").length;
             } else {
                 document.getElementById("one-selected").style.display = "none";
                 document.getElementById("many-selected").style.display = "none";
             }
         }
 
+        function refreshPanels() {
+            refreshBarChart();
+            refreshHistogram();
+            refreshHeatmap();
+            refreshPieChart();
+            refreshSelectionPanel();
+        }
+
         function refreshGraphs() {
             document.getElementById("loading-screen").style.display = "block";
             setTimeout(function () {
                 refreshNetworkGraph();
-                refreshBarChart();
-                refreshHistogram(0);
-                refreshHeatmap();
-                refreshSelectionPanel();
+                refreshPanels();
 
                 // Colors
                 updateColor(0, document.getElementById("nodesA-color").value);
                 updateColor(1, document.getElementById("nodesB-color").value);
                 updateColor(2, document.getElementById("nodesC-color").value);
-                setTimeout(() => document.getElementById("loading-screen").style.display = "none", 2000);
-            }, 100);
+                setTimeout(() => document.getElementById("loading-screen").style.display = "none", 1000);
+            }, 500);
         }
 
         function updateColor(index, color) {
@@ -570,17 +659,22 @@
         }
 
         // Event listeners
+        document.getElementById("select-dataset").addEventListener('change', (event) => openDataset(event.target.files[0]))
+
+        document.getElementById("recalculate").addEventListener('click', (event) => refreshGraphs());
+
         document.getElementById("nodesA-color").addEventListener('change', (event) => updateColor(0, event.target.value));
         document.getElementById("nodesB-color").addEventListener('change', (event) => updateColor(1, event.target.value));
         document.getElementById("nodesC-color").addEventListener('change', (event) => updateColor(2, event.target.value));
         document.getElementById("reset-zoom").addEventListener('click', zoomToFit);
         document.getElementById("apply-node-color").addEventListener('click', (event) => colorSelectedNodes(document.getElementById("node-color").value));
         document.getElementById("apply-edge-color").addEventListener('click', (event) => colorSelectedEdges(document.getElementById("edge-color").value));
-        document.getElementById("recalculate").addEventListener('click', (event) => refreshGraphs());
-        document.getElementById("cy").addEventListener('click', (event) => refreshSelectionPanel());
+        document.getElementById("regex-query").addEventListener('input', (event) => setSelectedRegex(event.target.value));
+        document.getElementById("show-labels").addEventListener('change', (event) => setLabels(event.target.checked));
+
 
         // Load dataset
-        async function openDataset(event) {
+        async function openDataset(file) {
             var reader = new FileReader();
             reader.onload = function () {
                 let text = reader.result;
@@ -590,10 +684,11 @@
                 }
                 refreshGraphs();
             };
-            reader.readAsText(event.target.files[0]);
+            reader.readAsText(file);
         }
 
-        // Initialze graphs
+        // Initialze the default dataset
+        datasetLines = defaultDataset; // from default-dataset.js
         refreshGraphs();
     </script>
 </body>
