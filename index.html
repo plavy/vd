@@ -14,6 +14,7 @@
     <script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src='https://cdn.plot.ly/plotly-2.32.0.min.js'></script>
     <script src="default-dataset.js"></script>
 
 </head>
@@ -90,9 +91,6 @@
                 <button id="reset-zoom" type="button">Zoom to fit</button>
             </div>
             <div>
-                Piechart: ingoers - outgoers
-            </div>
-            <div>
                 RDS mode
             </div>
         </div>
@@ -103,13 +101,13 @@
             <label for="bar-chart">Number of nodes per class</label>
             <canvas id="bar-chart"></canvas>
 
-            <label for="histogram" id="histogram-label">Distribution of node neighbours</label>
-            <canvas id="histogram"></canvas>
+            <label for="histogram">Distribution of node neighbours</label>
+            <div id="histogram"></div>
 
             <label for="heatmap">Heatmap of connections between classes</label>
             <div id="heatmap"></div>
 
-            <label for="pie-chart" id="pie-chart-label">Ingoers vs Outogers</label>
+            <label for="pie-chart">Ingoers vs Outogers</label>
             <canvas id="pie-chart"></canvas>
         </div>
     </div>
@@ -248,48 +246,16 @@
         };
 
         // Histogram
-        const hist = new Chart("histogram", {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    data: []
-                }]
+        var histLayout = {
+            height: 300,
+            width: 350,
+            margin: {
+                l: 10,
+                r: 10,
+                b: 10,
+                t: 10,
+                pad: 10
             },
-            options: {
-                legend: { display: false },
-                scales: {
-                    xAxes: [{
-                        display: false,
-                        barPercentage: 1.25,
-                        ticks: {
-                            max: 4,
-                            fontColor: "#000000"
-                        }
-                    }, {
-                        display: true,
-                        ticks: {
-                            autoSkip: false,
-                            max: 5,
-                        }
-                    }],
-                    yAxes: [{
-                        ticks: {
-                            beginAtZero: true,
-                            fontColor: "#000000"
-                        }
-                    }]
-                }
-            }
-        });
-        document.getElementById("histogram").onclick = function (evt) {
-            var points = bar.getElementsAtEventForMode(evt, 'nearest', {
-                intersect: true
-            }, true);
-            if (points.length) {
-                let number = points[0]._index;
-                setSelectedNodesN(1, number + 1)
-            }
         };
 
         // Heatmap
@@ -376,9 +342,9 @@
             cy.nodes(".group" + index).select();
         }
 
-        function setSelectedNodesN(index, number) {
+        function setSelectedNodesN(number) {
             unselectAll();
-            cy.nodes(".group" + index).filter(function (n) {
+            cy.nodes().filter(function (n) {
                 return n.neighborhood().nodes().length == number;
             }).select();
         }
@@ -557,13 +523,22 @@
 
         function refreshHistogram() {
             let nodes = cy.nodes(':selected').length == 0 ? cy.nodes() : cy.nodes(':selected');
-            count = [0, 0, 0, 0, 0, 0]
-            nodes.forEach((node) => count[node.neighborhood().nodes().length] += 1);
-            hist.data.labels = [0, 1, 2, 3, 4, 5]
-            hist.data.datasets = [{
-                data: count
-            }]
-            hist.update();
+            let count = [];
+            for (node of nodes) {
+                count.push(node.neighborhood().nodes().length);
+            }
+            let trace = {
+                x: count,
+                type: 'histogram',
+                marker: {
+                    color: 'orange',
+                }
+            };
+            let data = [trace];
+            Plotly.newPlot("histogram", data, histLayout, { displayModeBar: false });
+            document.getElementById("histogram").on('plotly_click', function (data) {
+                setSelectedNodesN(data.points[0].x);
+            });
         }
 
         function refreshHeatmap() {
@@ -579,7 +554,6 @@
                     count[sourceIndex][targetIndex] += 1;
                 }
             }
-            console.log(count);
             let series = [];
             for (let i = 0; i < K; i++) {
                 series.push({
