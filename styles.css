@@ -48,8 +48,7 @@ body {
     position: absolute;
     top: 0%;
     right: 0%;
-    width: 20%;
-    min-width: 300px;
+    width: 380px;
     height: 100%;
     overflow: auto;
     z-index: 10;
