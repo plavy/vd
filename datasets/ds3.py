@@ -34,7 +34,7 @@ lines.extend([generate_abb_pattern() for _ in range(abb_count)])
 random.shuffle(lines)
 
 # Write dataset to CSV file
-with open("generated_dataset.csv", "w", newline='') as csvfile:
+with open("ds3.csv", "w", newline='') as csvfile:
     writer = csv.writer(csvfile)
     for line in lines:
         writer.writerow(line)
